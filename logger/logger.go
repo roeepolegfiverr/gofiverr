@@ -1,11 +1,12 @@
-package shared
+package logger
 
 import (
 	"encoding/json"
 	"fmt"
+	"github.com/adjust/goenv"
 	"github.com/gin-gonic/gin"
 	"github.com/robertkowalski/graylog-golang"
-	"go_live/shared/errors"
+	"gofiverr/errors"
 	"log"
 	"net/http"
 	"os"
@@ -14,6 +15,7 @@ import (
 
 var (
 	Graylog *gelf.Gelf
+	config  *goenv.Goenv
 )
 
 type logEntry struct {
@@ -27,9 +29,10 @@ type logEntry struct {
 }
 
 func InitLogger() {
+	config = goenv.DefaultGoenv()
 	Graylog = gelf.New(gelf.Config{
-		GraylogHostname: Config.Get("graylog.host", "localhost"),
-		GraylogPort:     Config.GetInt("graylog.port", 9191),
+		GraylogHostname: config.Get("graylog.host", "localhost"),
+		GraylogPort:     config.GetInt("graylog.port", 9191),
 	})
 }
 

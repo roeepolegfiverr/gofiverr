@@ -1,10 +1,12 @@
-package shared
+package statsd
 
 import (
 	"fmt"
+	"github.com/adjust/goenv"
 	"github.com/gin-gonic/gin"
 	"github.com/peterbourgon/g2s"
-	"go_live/shared/errors"
+	"gofiverr/errors"
+	"gofiverr/logger"
 	"os"
 	"time"
 )
@@ -20,13 +22,15 @@ type statsDClient struct {
 }
 
 var (
-	stats *statsDClient
+	stats  *statsDClient
+	config *goenv.Goenv
 )
 
 func InitStatsD() {
-	host := Config.Get("statsd.host", "localhost")
-	port := Config.GetInt("statsd.port", 8125)
-	prefix := Config.Get("statsd.prefix", "my_service")
+	config = goenv.DefaultGoenv()
+	host := config.Get("statsd.host", "localhost")
+	port := config.GetInt("statsd.port", 8125)
+	prefix := config.Get("statsd.prefix", "my_service")
 
 	stats = initClient(fmt.Sprintf("%s:%d", host, port), prefix)
 }
@@ -98,13 +102,13 @@ func timeWorkTimers(elapsed time.Duration, event string) {
 func initClient(server string, prefix string) *statsDClient {
 	client, err := g2s.Dial("udp", server)
 	if err != nil {
-		ErrorLog(errors.Wrap(err, err.Error()))
+		logger.ErrorLog(errors.Wrap(err, err.Error()))
 		return nil
 	}
 
 	hostname, err := os.Hostname()
 	if err != nil {
-		ErrorLog(errors.Wrap(err, err.Error()))
+		logger.ErrorLog(errors.Wrap(err, err.Error()))
 		return nil
 	}
 
