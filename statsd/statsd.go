@@ -2,8 +2,6 @@ package statsd
 
 import (
 	"fmt"
-	"github.com/adjust/goenv"
-	"github.com/gin-gonic/gin"
 	"github.com/peterbourgon/g2s"
 	"gofiverr/errors"
 	"gofiverr/logger"
@@ -22,37 +20,31 @@ type statsDClient struct {
 }
 
 var (
-	stats  *statsDClient
-	config *goenv.Goenv
+	stats *statsDClient
 )
 
-func InitStatsD() {
-	config = goenv.DefaultGoenv()
-	host := config.Get("statsd.host", "localhost")
-	port := config.GetInt("statsd.port", 8125)
-	prefix := config.Get("statsd.prefix", "my_service")
-
+func InitStatsD(host string, port int, prefix string) {
 	stats = initClient(fmt.Sprintf("%s:%d", host, port), prefix)
 }
 
 // StatsDMiddleware is the middleware handler that sends the status code and response time to StatsD server
-func StatsDMiddleware() gin.HandlerFunc {
+// func StatsDMiddleware() gin.HandlerFunc {
 
-	return func(c *gin.Context) {
-		startTime := time.Now()
-		c.Next()
-		responseTime := time.Since(startTime)
-		status_code := string(c.Writer.Status())
+// 	return func(c *gin.Context) {
+// 		startTime := time.Now()
+// 		c.Next()
+// 		responseTime := time.Since(startTime)
+// 		status_code := string(c.Writer.Status())
 
-		//Send metrics
-		go sendMetrics(status_code, "", responseTime)
+// 		//Send metrics
+// 		go SendMetrics(status_code, "", responseTime)
 
-	}
-}
+// 	}
+// }
 
 // StatsDWrapper wraps the worker work to it can measure its times and other stats.
 // it will return a func so we can continue and wrap it with other wrappers, such as logger.
-func StatsDWrapper(o options, worker wrappedFn) wrappedFn {
+func StatsDWrapper(o logger.Options, worker logger.WrappedFn) logger.WrappedFn {
 	return func() error {
 		start := time.Now()
 		err := worker()
@@ -64,7 +56,7 @@ func StatsDWrapper(o options, worker wrappedFn) wrappedFn {
 	}
 }
 
-func logWork(elapsed time.Duration, err error, o options) {
+func logWork(elapsed time.Duration, err error, o logger.Options) {
 	status := "success"
 	if err != nil {
 		status = "failed"
@@ -72,11 +64,11 @@ func logWork(elapsed time.Duration, err error, o options) {
 
 	if val, ok := o["event"]; ok {
 		event := val.(string)
-		go sendMetrics(status, event, elapsed)
+		go SendMetrics(status, event, elapsed)
 	}
 }
 
-func sendMetrics(status string, event string, elapsed time.Duration) {
+func SendMetrics(status string, event string, elapsed time.Duration) {
 	incrementWorkCounters(status, event)
 	timeWorkTimers(elapsed, event)
 }

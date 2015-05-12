@@ -3,19 +3,17 @@ package logger
 import (
 	"encoding/json"
 	"fmt"
-	"github.com/adjust/goenv"
-	"github.com/gin-gonic/gin"
+	// "github.com/gin-gonic/gin"
 	"github.com/robertkowalski/graylog-golang"
 	"gofiverr/errors"
 	"log"
-	"net/http"
+	// "net/http"
 	"os"
 	"time"
 )
 
 var (
 	Graylog *gelf.Gelf
-	config  *goenv.Goenv
 )
 
 type logEntry struct {
@@ -28,11 +26,10 @@ type logEntry struct {
 	FullMessage  string `json:"full_message"`
 }
 
-func InitLogger() {
-	config = goenv.DefaultGoenv()
+func InitLogger(host string, port int) {
 	Graylog = gelf.New(gelf.Config{
-		GraylogHostname: config.Get("graylog.host", "localhost"),
-		GraylogPort:     config.GetInt("graylog.port", 9191),
+		GraylogHostname: host,
+		GraylogPort:     port,
 	})
 }
 
@@ -65,28 +62,28 @@ func Log(err error, level int) {
 }
 
 // RecoverAndLog catches an error, log it and recover. Return a gin.HandlerFunc
-func RecoverAndLog() gin.HandlerFunc {
+// func RecoverAndLog() gin.HandlerFunc {
 
-	return func(c *gin.Context) {
-		defer func() {
-			if err := recover(); err != nil {
-				Log(errors.New(err.(string)), 4)
-				c.Writer.WriteHeader(http.StatusInternalServerError)
-			}
-		}()
-		c.Next()
-		if len(c.Errors) > 0 {
-			for _, error := range c.Errors {
-				Log(errors.New(error.Err), 3)
-			}
-		}
-	}
-}
+// 	return func(c *gin.Context) {
+// 		defer func() {
+// 			if err := recover(); err != nil {
+// 				Log(errors.New(err.(string)), 4)
+// 				c.Writer.WriteHeader(http.StatusInternalServerError)
+// 			}
+// 		}()
+// 		c.Next()
+// 		if len(c.Errors) > 0 {
+// 			for _, error := range c.Errors {
+// 				Log(errors.New(error.Err), 3)
+// 			}
+// 		}
+// 	}
+// }
 
-type wrappedFn func() error
-type options map[string]interface{}
+type WrappedFn func() error
+type Options map[string]interface{}
 
-func RecoverAndLogWrapper(o options, worker wrappedFn) (fn wrappedFn) {
+func RecoverAndLogWrapper(o Options, worker WrappedFn) (fn WrappedFn) {
 	fn = func() (err error) {
 
 		defer func() error {
