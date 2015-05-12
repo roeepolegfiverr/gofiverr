@@ -1,10 +1,11 @@
-package shared
+package statsd
 
 import (
 	"fmt"
 	"github.com/gin-gonic/gin"
 	"github.com/peterbourgon/g2s"
-	"go_live/shared/errors"
+	"gofiverr/errors"
+	"gofiverr/logger"
 	"os"
 	"time"
 )
@@ -23,11 +24,7 @@ var (
 	stats *statsDClient
 )
 
-func InitStatsD() {
-	host := Config.Get("statsd.host", "localhost")
-	port := Config.GetInt("statsd.port", 8125)
-	prefix := Config.Get("statsd.prefix", "my_service")
-
+func InitStatsD(host string, port int, prefix string) {
 	stats = initClient(fmt.Sprintf("%s:%d", host, port), prefix)
 }
 
@@ -41,14 +38,14 @@ func StatsDMiddleware() gin.HandlerFunc {
 		status_code := string(c.Writer.Status())
 
 		//Send metrics
-		go sendMetrics(status_code, "", responseTime)
+		go SendMetrics(status_code, "", responseTime)
 
 	}
 }
 
 // StatsDWrapper wraps the worker work to it can measure its times and other stats.
 // it will return a func so we can continue and wrap it with other wrappers, such as logger.
-func StatsDWrapper(o options, worker wrappedFn) wrappedFn {
+func StatsDWrapper(o map[string]interface{}, worker func() error) func() error {
 	return func() error {
 		start := time.Now()
 		err := worker()
@@ -60,7 +57,7 @@ func StatsDWrapper(o options, worker wrappedFn) wrappedFn {
 	}
 }
 
-func logWork(elapsed time.Duration, err error, o options) {
+func logWork(elapsed time.Duration, err error, o logger.Options) {
 	status := "success"
 	if err != nil {
 		status = "failed"
@@ -68,11 +65,11 @@ func logWork(elapsed time.Duration, err error, o options) {
 
 	if val, ok := o["event"]; ok {
 		event := val.(string)
-		go sendMetrics(status, event, elapsed)
+		go SendMetrics(status, event, elapsed)
 	}
 }
 
-func sendMetrics(status string, event string, elapsed time.Duration) {
+func SendMetrics(status string, event string, elapsed time.Duration) {
 	incrementWorkCounters(status, event)
 	timeWorkTimers(elapsed, event)
 }
@@ -98,13 +95,13 @@ func timeWorkTimers(elapsed time.Duration, event string) {
 func initClient(server string, prefix string) *statsDClient {
 	client, err := g2s.Dial("udp", server)
 	if err != nil {
-		ErrorLog(errors.Wrap(err, err.Error()))
+		logger.ErrorLog(errors.Wrap(err, err.Error()))
 		return nil
 	}
 
 	hostname, err := os.Hostname()
 	if err != nil {
-		ErrorLog(errors.Wrap(err, err.Error()))
+		logger.ErrorLog(errors.Wrap(err, err.Error()))
 		return nil
 	}
 

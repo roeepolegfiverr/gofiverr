@@ -1,11 +1,11 @@
-package shared
+package logger
 
 import (
 	"encoding/json"
 	"fmt"
 	"github.com/gin-gonic/gin"
 	"github.com/robertkowalski/graylog-golang"
-	"go_live/shared/errors"
+	"gofiverr/errors"
 	"log"
 	"net/http"
 	"os"
@@ -26,10 +26,10 @@ type logEntry struct {
 	FullMessage  string `json:"full_message"`
 }
 
-func InitLogger() {
+func InitLogger(host string, port int) {
 	Graylog = gelf.New(gelf.Config{
-		GraylogHostname: Config.Get("graylog.host", "localhost"),
-		GraylogPort:     Config.GetInt("graylog.port", 9191),
+		GraylogHostname: host,
+		GraylogPort:     port,
 	})
 }
 
@@ -80,10 +80,10 @@ func RecoverAndLog() gin.HandlerFunc {
 	}
 }
 
-type wrappedFn func() error
-type options map[string]interface{}
+type WrappedFn func() error
+type Options map[string]interface{}
 
-func RecoverAndLogWrapper(o options, worker wrappedFn) (fn wrappedFn) {
+func RecoverAndLogWrapper(o Options, worker WrappedFn) (fn WrappedFn) {
 	fn = func() (err error) {
 
 		defer func() error {
