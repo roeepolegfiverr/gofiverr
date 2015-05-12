@@ -2,6 +2,7 @@ package statsd
 
 import (
 	"fmt"
+	"github.com/gin-gonic/gin"
 	"github.com/peterbourgon/g2s"
 	"gofiverr/errors"
 	"gofiverr/logger"
@@ -28,23 +29,23 @@ func InitStatsD(host string, port int, prefix string) {
 }
 
 // StatsDMiddleware is the middleware handler that sends the status code and response time to StatsD server
-// func StatsDMiddleware() gin.HandlerFunc {
+func StatsDMiddleware() gin.HandlerFunc {
 
-// 	return func(c *gin.Context) {
-// 		startTime := time.Now()
-// 		c.Next()
-// 		responseTime := time.Since(startTime)
-// 		status_code := string(c.Writer.Status())
+	return func(c *gin.Context) {
+		startTime := time.Now()
+		c.Next()
+		responseTime := time.Since(startTime)
+		status_code := string(c.Writer.Status())
 
-// 		//Send metrics
-// 		go SendMetrics(status_code, "", responseTime)
+		//Send metrics
+		go SendMetrics(status_code, "", responseTime)
 
-// 	}
-// }
+	}
+}
 
 // StatsDWrapper wraps the worker work to it can measure its times and other stats.
 // it will return a func so we can continue and wrap it with other wrappers, such as logger.
-func StatsDWrapper(o logger.Options, worker logger.WrappedFn) logger.WrappedFn {
+func StatsDWrapper(o map[string]interface{}, worker func() error) func() error {
 	return func() error {
 		start := time.Now()
 		err := worker()

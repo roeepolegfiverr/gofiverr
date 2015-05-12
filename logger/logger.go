@@ -3,11 +3,11 @@ package logger
 import (
 	"encoding/json"
 	"fmt"
-	// "github.com/gin-gonic/gin"
+	"github.com/gin-gonic/gin"
 	"github.com/robertkowalski/graylog-golang"
 	"gofiverr/errors"
 	"log"
-	// "net/http"
+	"net/http"
 	"os"
 	"time"
 )
@@ -62,23 +62,23 @@ func Log(err error, level int) {
 }
 
 // RecoverAndLog catches an error, log it and recover. Return a gin.HandlerFunc
-// func RecoverAndLog() gin.HandlerFunc {
+func RecoverAndLog() gin.HandlerFunc {
 
-// 	return func(c *gin.Context) {
-// 		defer func() {
-// 			if err := recover(); err != nil {
-// 				Log(errors.New(err.(string)), 4)
-// 				c.Writer.WriteHeader(http.StatusInternalServerError)
-// 			}
-// 		}()
-// 		c.Next()
-// 		if len(c.Errors) > 0 {
-// 			for _, error := range c.Errors {
-// 				Log(errors.New(error.Err), 3)
-// 			}
-// 		}
-// 	}
-// }
+	return func(c *gin.Context) {
+		defer func() {
+			if err := recover(); err != nil {
+				Log(errors.New(err.(string)), 4)
+				c.Writer.WriteHeader(http.StatusInternalServerError)
+			}
+		}()
+		c.Next()
+		if len(c.Errors) > 0 {
+			for _, error := range c.Errors {
+				Log(errors.New(error.Err), 3)
+			}
+		}
+	}
+}
 
 type WrappedFn func() error
 type Options map[string]interface{}
