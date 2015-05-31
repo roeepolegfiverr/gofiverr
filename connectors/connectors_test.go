@@ -1,6 +1,7 @@
 package connectors
 
 import (
+	"github.com/adjust/goenv"
 	"testing"
 )
 
@@ -13,7 +14,7 @@ func TestSimpleStuff(t *testing.T) {
 }
 
 func TestRedisPing(t *testing.T) {
-	InitConnectors(true)
+	InitConnectors(goenv.DefaultGoenv(), true)
 	client, _ := Clients.Redis()
 	reply, _ := client.Cmd("ping").Bool()
 

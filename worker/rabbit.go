@@ -5,14 +5,14 @@ import (
 	"encoding/json"
 	"fmt"
 	"github.com/streadway/amqp"
-	"go_live/shared/connectors"
-	"go_live/shared/errors"
-	"go_live/shared/logger"
-	"go_live/shared/statsd"
 	"os"
 	"strings"
 	"time"
 	"unicode/utf8"
+	"github.com/roeepolegfiverr/gofiverr/errors"
+	"github.com/roeepolegfiverr/gofiverr/logger"
+	"github.com/roeepolegfiverr/gofiverr/connectors"
+	"github.com/roeepolegfiverr/gofiverr/statsd"
 )
 
 type WorkerTask func(*Event) (err error)

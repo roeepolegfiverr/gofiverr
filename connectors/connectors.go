@@ -7,9 +7,9 @@ import (
 	"github.com/fzzy/radix/redis"
 	_ "github.com/go-sql-driver/mysql"
 	"github.com/streadway/amqp"
-	"go_live/shared/errors"
-	"go_live/shared/logger"
 	"gopkg.in/mgo.v2"
+	"github.com/roeepolegfiverr/gofiverr/logger"
+	"github.com/roeepolegfiverr/gofiverr/errors"
 )
 
 type clients struct {

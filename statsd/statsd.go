@@ -4,10 +4,10 @@ import (
 	"fmt"
 	"github.com/gin-gonic/gin"
 	"github.com/peterbourgon/g2s"
-	"go_live/shared/errors"
-	"go_live/shared/logger"
 	"os"
 	"time"
+	"github.com/roeepolegfiverr/gofiverr/errors"
+	"github.com/roeepolegfiverr/gofiverr/logger"
 )
 
 const (

@@ -5,11 +5,11 @@ import (
 	"fmt"
 	"github.com/gin-gonic/gin"
 	"github.com/robertkowalski/graylog-golang"
-	"go_live/shared/errors"
 	"log"
 	"net/http"
 	"os"
 	"time"
+	"github.com/roeepolegfiverr/gofiverr/errors"
 )
 
 var (
