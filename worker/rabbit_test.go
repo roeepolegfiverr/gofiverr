@@ -7,14 +7,16 @@ import (
 	"go_live/syslib"
 	"testing"
 	"time"
+	"github.com/roeepolegfiverr/gofiverr/connectors"
+	"github.com/adjust/goenv"
 )
 
 func init() {
-	syslib.Setup(true)
+	connectors.InitConnectors(goenv.DefaultGoenv(), true)
 }
 
 func publishMessages(n int) {
-	conn, err := amqp.Dial(syslib.Config.GetNamedAmqp("rabbit"))
+	conn, err := amqp.Dial(goenv.DefaultGoenv().GetNamedAmqp("rabbit"))
 	if err != nil {
 		fmt.Printf("error connecting rabbit %s", err)
 	}
@@ -63,7 +65,7 @@ func TestStress(t *testing.T) {
 	queueName := syslib.Config.Get("worker_queue", "")
 	routingKey := syslib.Config.Get("routing_key", "")
 	workerName := syslib.Config.Get("worker_name", "")
-	go Consume(queueName, workerName, routingKey, listener)
+	go Consume(queueName, workerName, routingKey,1, listener)
 
 	for i := 0; i < n; i++ {
 		fmt.Printf("Got new message %d with %v\n", i, <-listener)
