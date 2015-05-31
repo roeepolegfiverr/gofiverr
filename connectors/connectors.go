@@ -1,12 +1,14 @@
-package shared
+package connectors
 
 import (
 	"database/sql"
 	"fmt"
+	"github.com/adjust/goenv"
 	"github.com/fzzy/radix/redis"
 	_ "github.com/go-sql-driver/mysql"
 	"github.com/streadway/amqp"
 	"go_live/shared/errors"
+	"go_live/shared/logger"
 	"gopkg.in/mgo.v2"
 )
 
@@ -19,12 +21,18 @@ type clients struct {
 
 var (
 	//Clients contain all the different connections to various dbs.
-	Clients                      *clients
-	RedisPipelineQueueEmptyError error = redis.PipelineQueueEmptyError
+	Clients *clients
+	config  *goenv.Goenv
 )
 
+// func init() {
+// 	Config = goenv.DefaultGoenv()
+// 	InitConnectors(Config, true)
+// }
+
 // Initialize the connectors
-func InitConnectors(initRabbit bool) {
+func InitConnectors(cfg *goenv.Goenv, initRabbit bool) {
+	config = cfg
 	Clients = &clients{
 		redisClients:   make(map[string]*redis.Client),
 		mongoClients:   make(map[string]*mgo.Session),
@@ -66,17 +74,17 @@ func (clients *clients) Rabbit() (channel *amqp.Channel) {
 	if Clients.rabbitConsumer != nil {
 		return Clients.rabbitConsumer
 	}
-	conn, err := amqp.Dial(Config.GetNamedAmqp("rabbit"))
+	conn, err := amqp.Dial(config.GetNamedAmqp("rabbit"))
 	if err != nil {
 		fmt.Printf("error connecting rabbit %s", err)
-		ErrorLog(errors.Wrap(err, err.Error()))
+		logger.ErrorLog(errors.Wrap(err, err.Error()))
 		panic(err)
 	}
 
 	channel, err = conn.Channel()
 	if err != nil {
 		fmt.Printf("error connecting channel rabbit %s", err)
-		ErrorLog(errors.Wrap(err, err.Error()))
+		logger.ErrorLog(errors.Wrap(err, err.Error()))
 		panic(err)
 	}
 	Clients.rabbitConsumer = channel
@@ -90,9 +98,6 @@ func (clients *clients) MySql() (client *sql.DB, err error) {
 
 // Get named MySql connection
 func (clients *clients) NamedMySql(clientName string) (client *sql.DB, err error) {
-	if clientName == "" {
-		clientName = "default"
-	}
 	if client, ok := clients.mySqlClients[clientName]; ok {
 		return client, nil
 	}
@@ -103,14 +108,10 @@ func (clients *clients) NamedMySql(clientName string) (client *sql.DB, err error
 // Get the default Redis client
 func (clients *clients) Redis() (client *redis.Client, err error) {
 	return clients.NamedRedis("default")
-
 }
 
 // Get named Redis connection
 func (clients *clients) NamedRedis(clientName string) (client *redis.Client, err error) {
-	if clientName == "" {
-		clientName = "default"
-	}
 	if client, ok := clients.redisClients[clientName]; ok {
 		return client, nil
 	}
@@ -119,16 +120,12 @@ func (clients *clients) NamedRedis(clientName string) (client *redis.Client, err
 }
 
 // Get the default Mongo client
-func (clients *clients) Mongo(clientName string) (client *mgo.Session, err error) {
+func (clients *clients) Mongo() (client *mgo.Session, err error) {
 	return clients.NamedMongo("default")
-
 }
 
 // Get named Mongo connection
 func (clients *clients) NamedMongo(clientName string) (client *mgo.Session, err error) {
-	if clientName == "" {
-		clientName = "default"
-	}
 	if client, ok := clients.mongoClients[clientName]; ok {
 		// always return a copy of a session.
 		return client.Copy(), nil
@@ -141,23 +138,23 @@ func (clients *clients) NamedMongo(clientName string) (client *mgo.Session, err 
 }
 
 func (clients *clients) createMySqlClient(clientName string) (client *sql.DB, err error) {
-	user := Config.Get(fmt.Sprintf("mysql.%s.user", clientName), "root")
-	password := Config.Get(fmt.Sprintf("mysql.%s.password", clientName), "")
-	host := Config.Get(fmt.Sprintf("mysql.%s.host", clientName), "localhost")
-	port := Config.GetInt(fmt.Sprintf("mysql.%s.port", clientName), 3306)
-	dbName := Config.Get(fmt.Sprintf("mysql.%s.database", clientName), "fiverr_dev")
+	user := config.Get(fmt.Sprintf("mysql.%s.user", clientName), "root")
+	password := config.Get(fmt.Sprintf("mysql.%s.password", clientName), "")
+	host := config.Get(fmt.Sprintf("mysql.%s.host", clientName), "localhost")
+	port := config.GetInt(fmt.Sprintf("mysql.%s.port", clientName), 3306)
+	dbName := config.Get(fmt.Sprintf("mysql.%s.database", clientName), "fiverr_dev")
 
 	fmt.Println(fmt.Sprintf("%s:%s@tcp(%s:%d)/%s", user, password, host, port, dbName))
 	client, err = sql.Open("mysql", fmt.Sprintf("%s:%s@tcp(%s:%d)/%s", user, password, host, port, dbName))
 	if err != nil {
-		ErrorLog(errors.Wrap(err, err.Error()))
+		logger.ErrorLog(errors.Wrap(err, err.Error()))
 		return nil, err
 	}
 
 	// Open doesn't open a connection. Validate DSN data:
 	err = client.Ping()
 	if err != nil {
-		ErrorLog(errors.Wrap(err, err.Error()))
+		logger.ErrorLog(errors.Wrap(err, err.Error()))
 		return nil, err
 	}
 
@@ -168,26 +165,28 @@ func (clients *clients) createMySqlClient(clientName string) (client *sql.DB, er
 }
 
 func (clients *clients) createRedisClient(clientName string) (client *redis.Client, err error) {
-	host := Config.Get(fmt.Sprintf("redis.%s.host", clientName), "localhost")
-	port := Config.GetInt(fmt.Sprintf("redis.%s.port", clientName), 6379)
+	fmt.Println("createRedisClient - CONFIG: ", config)
+	host := config.Get(fmt.Sprintf("redis.%s.host", clientName), "localhost")
+	port := config.GetInt(fmt.Sprintf("redis.%s.port", clientName), 6379)
 
 	client, err = redis.Dial("tcp", fmt.Sprintf("%s:%d", host, port))
 	if err != nil {
-		ErrorLog(errors.Wrap(err, err.Error()))
+		logger.ErrorLog(errors.Wrap(err, err.Error()))
 		return nil, err
 	}
 
 	clients.redisClients[clientName] = client
+	fmt.Println("clients.redisClients[clientName]:", clients.redisClients[clientName])
 	return client, nil
 }
 
 func (clients *clients) createMongoClient(clientName string) (client *mgo.Session, err error) {
-	host := Config.Get(fmt.Sprintf("mongo.%s.host", clientName), "localhost")
-	port := Config.GetInt(fmt.Sprintf("mongo.%s.port", clientName), 27017)
+	url := config.Get(fmt.Sprintf("mongo.%s", clientName), "localhost:27017/fiverr_dev")
+	// dbName := config.Get(fmt.Sprintf("mongo.%s.db", clientName), "fiverr_dev")
 
-	client, err = mgo.Dial(fmt.Sprintf("%s:%d", host, port))
+	client, err = mgo.Dial(url)
 	if err != nil {
-		ErrorLog(errors.Wrap(err, err.Error()))
+		logger.ErrorLog(errors.Wrap(err, err.Error()))
 		return nil, err
 	}
 
@@ -196,15 +195,15 @@ func (clients *clients) createMongoClient(clientName string) (client *mgo.Sessio
 }
 
 func (clients *clients) createRabbit() (channel *amqp.Channel, err error) {
-	conn, err := amqp.Dial(Config.GetNamedAmqp("rabbit"))
+	conn, err := amqp.Dial(config.GetNamedAmqp("rabbit"))
 	if err != nil {
-		ErrorLog(errors.Wrap(err, err.Error()))
+		logger.ErrorLog(errors.Wrap(err, err.Error()))
 		return nil, err
 	}
 
 	channel, err = conn.Channel()
 	if err != nil {
-		ErrorLog(errors.Wrap(err, err.Error()))
+		logger.ErrorLog(errors.Wrap(err, err.Error()))
 		return nil, err
 	}
 

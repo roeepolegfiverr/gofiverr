@@ -1,4 +1,4 @@
-package shared
+package logger
 
 import (
 	"encoding/json"
@@ -26,10 +26,10 @@ type logEntry struct {
 	FullMessage  string `json:"full_message"`
 }
 
-func InitLogger() {
+func InitLogger(host string, port int) {
 	Graylog = gelf.New(gelf.Config{
-		GraylogHostname: Config.Get("graylog.host", "localhost"),
-		GraylogPort:     Config.GetInt("graylog.port", 9191),
+		GraylogHostname: host,
+		GraylogPort:     port,
 	})
 }
 
@@ -80,10 +80,7 @@ func RecoverAndLog() gin.HandlerFunc {
 	}
 }
 
-type wrappedFn func() error
-type options map[string]interface{}
-
-func RecoverAndLogWrapper(o options, worker wrappedFn) (fn wrappedFn) {
+func RecoverAndLogWrapper(worker func() error) (fn func() error) {
 	fn = func() (err error) {
 
 		defer func() error {

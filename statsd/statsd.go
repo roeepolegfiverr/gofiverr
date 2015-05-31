@@ -1,10 +1,11 @@
-package shared
+package statsd
 
 import (
 	"fmt"
 	"github.com/gin-gonic/gin"
 	"github.com/peterbourgon/g2s"
 	"go_live/shared/errors"
+	"go_live/shared/logger"
 	"os"
 	"time"
 )
@@ -23,11 +24,7 @@ var (
 	stats *statsDClient
 )
 
-func InitStatsD() {
-	host := Config.Get("statsd.host", "localhost")
-	port := Config.GetInt("statsd.port", 8125)
-	prefix := Config.Get("statsd.prefix", "my_service")
-
+func InitStatsD(host, prefix string, port int) {
 	stats = initClient(fmt.Sprintf("%s:%d", host, port), prefix)
 }
 
@@ -41,40 +38,39 @@ func StatsDMiddleware() gin.HandlerFunc {
 		status_code := string(c.Writer.Status())
 
 		//Send metrics
-		go sendMetrics(status_code, "", responseTime)
+		sendMetrics(status_code, "", responseTime)
 
 	}
 }
 
 // StatsDWrapper wraps the worker work to it can measure its times and other stats.
 // it will return a func so we can continue and wrap it with other wrappers, such as logger.
-func StatsDWrapper(o options, worker wrappedFn) wrappedFn {
+func StatsDWrapper(eventName string, worker func() error) func() error {
 	return func() error {
 		start := time.Now()
 		err := worker()
 		end := time.Since(start)
 		//Send metrics
-		logWork(end, err, o)
-		fmt.Printf("Time: %.5f s with status %v\n", end.Seconds(), err == nil)
+		logWork(end, err, eventName)
+		//fmt.Printf("Time: %.5f s with status %v\n", end.Seconds(), err == nil)
 		return err
 	}
 }
 
-func logWork(elapsed time.Duration, err error, o options) {
+func logWork(elapsed time.Duration, err error, eventName string) {
 	status := "success"
 	if err != nil {
 		status = "failed"
 	}
 
-	if val, ok := o["event"]; ok {
-		event := val.(string)
-		go sendMetrics(status, event, elapsed)
-	}
+	sendMetrics(status, eventName, elapsed)
 }
 
-func sendMetrics(status string, event string, elapsed time.Duration) {
-	incrementWorkCounters(status, event)
-	timeWorkTimers(elapsed, event)
+func sendMetrics(status string, eventName string, elapsed time.Duration) {
+	go func() {
+		incrementWorkCounters(status, eventName)
+		timeWorkTimers(elapsed, eventName)
+	}()
 }
 
 func incrementWorkCounters(status string, event string) {
@@ -98,13 +94,13 @@ func timeWorkTimers(elapsed time.Duration, event string) {
 func initClient(server string, prefix string) *statsDClient {
 	client, err := g2s.Dial("udp", server)
 	if err != nil {
-		ErrorLog(errors.Wrap(err, err.Error()))
+		logger.ErrorLog(errors.Wrap(err, err.Error()))
 		return nil
 	}
 
 	hostname, err := os.Hostname()
 	if err != nil {
-		ErrorLog(errors.Wrap(err, err.Error()))
+		logger.ErrorLog(errors.Wrap(err, err.Error()))
 		return nil
 	}
 
