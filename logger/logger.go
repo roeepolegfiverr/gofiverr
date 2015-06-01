@@ -74,7 +74,7 @@ func RecoverAndLog() gin.HandlerFunc {
 		c.Next()
 		if len(c.Errors) > 0 {
 			for _, error := range c.Errors {
-				Log(errors.New(error.Err), 3)
+				Log(errors.Wrap(error.Err,fmt.Sprintf("Request failed with params: %v", c.Params)), 3)
 			}
 		}
 	}
