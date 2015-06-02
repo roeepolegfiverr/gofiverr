@@ -165,7 +165,6 @@ func (clients *clients) createMySqlClient(clientName string) (client *sql.DB, er
 }
 
 func (clients *clients) createRedisClient(clientName string) (client *redis.Client, err error) {
-	fmt.Println("createRedisClient - CONFIG: ", config)
 	host := config.Get(fmt.Sprintf("redis.%s.host", clientName), "localhost")
 	port := config.GetInt(fmt.Sprintf("redis.%s.port", clientName), 6379)
 
@@ -176,7 +175,6 @@ func (clients *clients) createRedisClient(clientName string) (client *redis.Clie
 	}
 
 	clients.redisClients[clientName] = client
-	fmt.Println("clients.redisClients[clientName]:", clients.redisClients[clientName])
 	return client, nil
 }
 
